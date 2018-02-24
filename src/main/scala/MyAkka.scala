@@ -15,14 +15,14 @@ object Main extends App {
 
   // val path = if (params.isEmpty) "../fukuokaex/test_12_000_000.csv" else params(0)
   //val path = "../fukuokaex/test_3_000_000.csv"
-  val path = "/home/enpedasi/fukuokaex/test_3_000_000.csv"
+  val path = args(0)
   val source = FileIO.fromPath(Paths.get(path))
 
   val acc_empty = Map.empty[String, Int]
   var resultMap = Map.empty[String, Int]
   val grp_col = "lastname"
 
-  val start = System.currentTimeMillis()
+  val start = System.nanoTime()
   source
     .via(CsvParsing.lineScanner())
     .via(CsvToMap.withHeaders("firstname", "lastname", "gender", "birthday", "addr1", "addr2", "addr3", "state", "email", "zip", "tel", "attr", "regdate"))
@@ -43,10 +43,11 @@ object Main extends App {
       resultMap = e
     }))
     .onComplete(done ⇒ {
-      val msec = (System.currentTimeMillis - start)
+      val nsec = (System.nanoTime() - start)
       println(done)
       resultMap.toSeq.sortWith(_._2 > _._2).take(10).foreach(println)
-      println(msec + "msec")
+      println(nsec + "nsec")
+      println((nsec / 1000000) + "msec")
       system.terminate()
     })
 }
