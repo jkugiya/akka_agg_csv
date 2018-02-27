@@ -1,5 +1,8 @@
 import java.nio.file.Files
 
+import org.apache.commons.lang3.StringUtils
+
+import scala.collection.mutable
 import scala.io.Source
 
 object NoAkka {
@@ -13,17 +16,16 @@ object NoAkka {
       linesSeq.par.map { lines =>
         for {
           line <- lines
-          splited = line.split(",")
-          lastname = splited(1)
+          lastname = StringUtils.split(line, ",", 3)(1)
           if lastname.nonEmpty
         } yield lastname
       }
     }.flatMap(identity)
         .grouped(30)
-        .map(_.groupBy(a => a(0)))
+        .map(_.groupBy(a => Math.abs(a.hashCode()) % 30))
         .flatMap { grouped =>
           grouped.values.par.map { words =>
-            words.foldLeft(Map.empty[String, Int]) {
+            words.foldLeft(mutable.AnyRefMap.empty[String, Int]) {
               case (acc, word) =>
                 val cnt = acc.getOrElse(word, 0)
                 acc.updated(word, cnt + 1)
@@ -31,7 +33,7 @@ object NoAkka {
           }
         }.foldLeft(Map.empty[String, Int]) {
       case (acc, rec) =>
-        acc ++ rec.map { case (k, v) => k -> (v + acc.getOrElse(k, 0)) }
+        acc ++ rec
     }
     val nsec = (System.nanoTime() - start)
     result.toSeq.sortWith(_._2 > _._2).take(10).foreach(println)
