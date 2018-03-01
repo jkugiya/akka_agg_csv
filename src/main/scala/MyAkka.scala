@@ -14,10 +14,10 @@ object Main extends App {
   val grp_col = "lastname"
   // 行の処理。CsaParsingは高級でやや重いようなので使わない
   val processCsv = Flow[String]
-      .map(s => StringUtils.split(s, ",", 3)(1))
+      .map(s => StringUtils.split(s, ",", 3)(1))// 速い実装を使う
   // 集計処理
   val aggregate = Flow[String]
-      .groupBy(30, s => Math.abs(s.hashCode)  % 30) // 頭一文字でグループ分け
+      .groupBy(1000, s => Math.abs(s.hashCode)  % 30)
       .fold(AnyRefMap.empty[String, Int]) { (acc, word) =>
     acc.updated(word, acc.getOrElse(word, 0) + 1)
   }.mergeSubstreams
@@ -43,6 +43,7 @@ object Main extends App {
     done.failed.foreach(println)
     println(nsec + "nsec")
     println((nsec / 1000000) + "msec")
+    s.close()
     system.terminate()
   }
 }
