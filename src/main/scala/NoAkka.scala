@@ -2,7 +2,6 @@ import java.nio.file.Files
 
 import org.apache.commons.lang3.StringUtils
 
-import scala.collection.mutable
 import scala.io.Source
 
 object NoAkka {
@@ -10,30 +9,24 @@ object NoAkka {
     val source = Source.fromFile(args(0), "UTF-8")
     val start = System.nanoTime()
     val result = source.getLines()
-        .grouped(1000) // Seq[String]
-        .grouped(8) // Seq[Seq[String]]
-        .flatMap { linesSeq =>
-      linesSeq.par.map { lines =>
-        for {
-          line <- lines
-          lastname = StringUtils.split(line, ",", 3)(1)
-          if lastname.nonEmpty
-        } yield lastname
-      }
-    }.flatMap(identity)
-        .grouped(30)
-        .map(_.groupBy(a => Math.abs(a.hashCode()) % 30))
-        .flatMap { grouped =>
-          grouped.values.par.map { words =>
-            words.foldLeft(mutable.AnyRefMap.empty[String, Int]) {
+        .map(StringUtils.split(_, ",", 3)(1))
+        .filter(_.nonEmpty)
+        .grouped(100000)
+        .toStream
+        .par
+        .map(_.groupBy(_.hashCode()))
+        .map { grouped =>
+          grouped.values.map { words =>
+            words.foldLeft(Map.empty[String, Int]) {
               case (acc, word) =>
                 val cnt = acc.getOrElse(word, 0)
                 acc.updated(word, cnt + 1)
             }
           }
-        }.foldLeft(Map.empty[String, Int]) {
+        }.map(_.foldLeft(Map.empty[String, Int])(_ ++ _))
+        .foldLeft(Map.empty[String, Int]) {
       case (acc, rec) =>
-        acc ++ rec
+        acc ++ rec.map { case (k, v) => k -> (v + acc.getOrElse(k, 0)) }
     }
     val nsec = (System.nanoTime() - start)
     result.toSeq.sortWith(_._2 > _._2).take(10).foreach(println)
